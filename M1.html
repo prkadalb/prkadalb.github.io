@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Piano</title>
+    <style>
+        body { display: flex; justify-content: center; align-items: center; height: 100vh; background: #222; font-family: sans-serif; }
+        .piano { display: flex; gap: 10px; }
+        .key {
+            width: 80px; height: 250px;
+            background: white; border-radius: 0 0 5px 5px;
+            cursor: pointer; display: flex; align-items: flex-end;
+            justify-content: center; padding-bottom: 20px;
+            font-weight: bold; user-select: none; transition: background 0.1s;
+        }
+        .key.black { background: #333; color: white; height: 180px; width: 60px; }
+        .key:active { background: #ddd; }
+        .key.black:active { background: #555; }
+    </style>
+</head>
+<body>
+
+    <div class="piano">
+        <div class="key black" onmousedown="playNote(466.16)" onmouseup="stopNote()" onmouseleave="stopNote()">A#</div>
+        <div class="key" onmousedown="playNote(261.63)" onmouseup="stopNote()" onmouseleave="stopNote()">C</div>
+        <div class="key black" onmousedown="playNote(277.18)" onmouseup="stopNote()" onmouseleave="stopNote()">C#</div>
+    </div>
+
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let oscillator = null;
+        let gainNode = null;
+
+        function playNote(frequency) {
+            // Create oscillator
+            oscillator = audioCtx.createOscillator();
+            gainNode = audioCtx.createGain();
+
+            oscillator.type = 'sine'; // Options: 'sine', 'square', 'sawtooth', 'triangle'
+            oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+            
+            // Connect and start
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            // Smooth start to avoid clicking sounds
+            gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+            gainNode.gain.linearRampToValueAtTime(1, audioCtx.currentTime + 0.05);
+            
+            oscillator.start();
+        }
+
+        function stopNote() {
+            if (oscillator) {
+                // Smooth fade out to avoid clicking
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1);
+                oscillator.stop(audioCtx.currentTime + 0.1);
+                oscillator = null;
+            }
+        }
+    </script>
+</body>
+</html>
