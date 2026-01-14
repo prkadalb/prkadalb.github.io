@@ -2,70 +2,87 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sustained Piano Keys</title>
+    <title>Sustained Piano</title>
     <style>
-        body { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; background: #1a1a1a; color: white; font-family: sans-serif; }
+        body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #222; color: white; font-family: sans-serif; }
         .piano { display: flex; gap: 10px; }
         .key {
-            width: 80px; height: 250px;
-            background: white; border-radius: 0 0 5px 5px;
-            cursor: pointer; display: flex; align-items: flex-end;
-            justify-content: center; padding-bottom: 20px;
-            font-weight: bold; color: #222; user-select: none;
+            width: 80px; height: 200px; background: white; color: black;
+            display: flex; align-items: flex-end; justify-content: center;
+            padding-bottom: 20px; border-radius: 5px; cursor: pointer;
+            user-select: none; font-weight: bold;
         }
-        .key.black { background: #333; color: white; height: 160px; width: 60px; z-index: 2; }
-        .key:active { background: #4CAF50 !important; } /* Visual feedback when held */
+        .key:active { background: #00ff00; }
+        .black { background: #444; color: white; height: 140px; width: 60px; }
     </style>
 </head>
 <body>
 
-    <p>Click and hold a key to play sound</p>
+    <h2>Hold the keys to play</h2>
     <div class="piano">
-        <div class="key" onmousedown="startNote(261.63)" onmouseup="stopNote()" onmouseleave="stopNote()">C</div>
-        <div class="key black" onmousedown="startNote(277.18)" onmouseup="stopNote()" onmouseleave="stopNote()">C#</div>
-        <div class="key black" onmousedown="startNote(466.16)" onmouseup="stopNote()" onmouseleave="stopNote()">A#</div>
+        <div class="key" id="note-C">C</div>
+        <div class="key black" id="note-Csharp">C#</div>
+        <div class="key black" id="note-Asharp">A#</div>
     </div>
 
     <script>
-        // Use a single AudioContext
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        let oscillator = null;
-        let gainNode = null;
+        let audioCtx = null;
+        let activeNotes = {}; // To track which keys are playing
 
-        function startNote(frequency) {
-            // Ensure context is active (browsers block auto-audio)
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-
-            // Stop any existing note just in case
-            if (oscillator) stopNote();
-
-            oscillator = audioCtx.createOscillator();
-            gainNode = audioCtx.createGain();
-
-            oscillator.type = 'triangle'; // Triangle is softer than Sine for long holds
-            oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
-            
-            // Set volume to a steady 0.5 (50%) and keep it there
-            gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            
-            oscillator.start();
-        }
-
-        function stopNote() {
-            if (oscillator) {
-                // Instantly set gain to 0 and stop
-                gainNode.gain.setValueAtTime(gainNode.gain.value, audioCtx.currentTime);
-                gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.01);
-                oscillator.stop(audioCtx.currentTime + 0.01);
-                oscillator = null;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
         }
+
+        function play(freq, id) {
+            initAudio();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            // Don't start a new sound if this key is already being held
+            if (activeNotes[id]) return;
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'sawtooth'; // Using sawtooth so it's very clear and audible
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+
+            activeNotes[id] = { osc, gain };
+        }
+
+        function stop(id) {
+            if (activeNotes[id]) {
+                activeNotes[id].osc.stop();
+                activeNotes[id].osc.disconnect();
+                delete activeNotes[id];
+            }
+        }
+
+        // Mapping keys to frequencies
+        const keys = [
+            { id: 'note-C', freq: 261.63 },
+            { id: 'note-Csharp', freq: 277.18 },
+            { id: 'note-Asharp', freq: 466.16 }
+        ];
+
+        keys.forEach(key => {
+            const el = document.getElementById(key.id);
+            // Desktop Mouse Events
+            el.addEventListener('mousedown', () => play(key.freq, key.id));
+            el.addEventListener('mouseup', () => stop(key.id));
+            el.addEventListener('mouseleave', () => stop(key.id));
+            
+            // Mobile Touch Events
+            el.addEventListener('touchstart', (e) => { e.preventDefault(); play(key.freq, key.id); });
+            el.addEventListener('touchend', (e) => { e.preventDefault(); stop(key.id); });
+        });
     </script>
 </body>
 </html>
