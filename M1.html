@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Sustained Piano</title>
+    <title>Sustained Piano 2</title>
     <style>
         body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #222; color: white; font-family: sans-serif; }
         .piano { display: flex; gap: 10px; }
@@ -20,9 +20,10 @@
 
     <h2>Hold the keys to play</h2>
     <div class="piano">
+        <div class="key black" id="note-Asharp">A#</div>
         <div class="key" id="note-C">C</div>
         <div class="key black" id="note-Csharp">C#</div>
-        <div class="key black" id="note-Asharp">A#</div>
+        
     </div>
 
     <script>
@@ -67,9 +68,11 @@
 
         // Mapping keys to frequencies
         const keys = [
+            { id: 'note-Asharp', freq: 233.08 },
             { id: 'note-C', freq: 261.63 },
-            { id: 'note-Csharp', freq: 277.18 },
-            { id: 'note-Asharp', freq: 233.08 }
+            
+            { id: 'note-Csharp', freq: 277.18 }
+            
         ];
 
         keys.forEach(key => {
