@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <title>Sustained Piano 2</title>
     <style>
-        body { display: flex; flex-direction: column; align-items: center; justify-content: center; background: #222; color: white; font-family: sans-serif; }
-        .piano { display: flex; gap: 10px; }
+        body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #222; color: white; font-family: sans-serif; }
+        .piano { display: flex; gap: 10px; margin-top: 20px; }
+        .controls { margin-bottom: 20px; }
+        select { padding: 8px; border-radius: 5px; cursor: pointer; }
         .key {
             width: 80px; height: 200px; background: white; color: black;
             display: flex; align-items: flex-end; justify-content: center;
@@ -18,17 +20,26 @@
 </head>
 <body>
 
-    <h2>Hold the keys to play</h2>
+    <div class="controls">
+        <label for="waveType">Select Sound Style: </label>
+        <select id="waveType">
+            <option value="sine">Sine (Soft/Pure)</option>
+            <option value="triangle" selected>Triangle (Warm/Piano-ish)</option>
+            <option value="square">Square (Retro/Chiptune)</option>
+            <option value="sawtooth">Sawtooth (Brash/Buzzy)</option>
+        </select>
+    </div>
+
     <div class="piano">
         <div class="key black" id="note-Asharp">A#</div>
         <div class="key" id="note-C">C</div>
         <div class="key black" id="note-Csharp">C#</div>
-        
     </div>
 
     <script>
         let audioCtx = null;
-        let activeNotes = {}; // To track which keys are playing
+        let activeNotes = {};
+        const waveSelector = document.getElementById('waveType');
 
         function initAudio() {
             if (!audioCtx) {
@@ -39,17 +50,17 @@
         function play(freq, id) {
             initAudio();
             if (audioCtx.state === 'suspended') audioCtx.resume();
-            
-            // Don't start a new sound if this key is already being held
             if (activeNotes[id]) return;
 
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
 
-            osc.type = 'sawtooth'; // Using sawtooth so it's very clear and audible
+            // Minimal Change: Link oscillator type to the dropdown value
+            osc.type = waveSelector.value; 
             osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
             
-            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            // Set gain slightly lower for square/sawtooth to prevent clipping
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
 
             osc.connect(gain);
             gain.connect(audioCtx.destination);
@@ -60,29 +71,25 @@
 
         function stop(id) {
             if (activeNotes[id]) {
-                activeNotes[id].osc.stop();
-                activeNotes[id].osc.disconnect();
+                // Add a tiny fade-out to stop the "click" sound
+                const g = activeNotes[id].gain;
+                g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.05);
+                activeNotes[id].osc.stop(audioCtx.currentTime + 0.05);
                 delete activeNotes[id];
             }
         }
 
-        // Mapping keys to frequencies
         const keys = [
             { id: 'note-Asharp', freq: 233.08 },
             { id: 'note-C', freq: 261.63 },
-            
             { id: 'note-Csharp', freq: 277.18 }
-            
         ];
 
         keys.forEach(key => {
             const el = document.getElementById(key.id);
-            // Desktop Mouse Events
             el.addEventListener('mousedown', () => play(key.freq, key.id));
             el.addEventListener('mouseup', () => stop(key.id));
             el.addEventListener('mouseleave', () => stop(key.id));
-            
-            // Mobile Touch Events
             el.addEventListener('touchstart', (e) => { e.preventDefault(); play(key.freq, key.id); });
             el.addEventListener('touchend', (e) => { e.preventDefault(); stop(key.id); });
         });
