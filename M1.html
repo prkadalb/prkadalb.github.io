@@ -3,59 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Piano</title>
+    <title>Sustained Piano Keys</title>
     <style>
-        body { display: flex; justify-content: center; align-items: center; height: 100vh; background: #222; font-family: sans-serif; }
+        body { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; background: #1a1a1a; color: white; font-family: sans-serif; }
         .piano { display: flex; gap: 10px; }
         .key {
             width: 80px; height: 250px;
             background: white; border-radius: 0 0 5px 5px;
             cursor: pointer; display: flex; align-items: flex-end;
             justify-content: center; padding-bottom: 20px;
-            font-weight: bold; user-select: none; transition: background 0.1s;
+            font-weight: bold; color: #222; user-select: none;
         }
-        .key.black { background: #333; color: white; height: 180px; width: 60px; }
-        .key:active { background: #ddd; }
-        .key.black:active { background: #555; }
+        .key.black { background: #333; color: white; height: 160px; width: 60px; z-index: 2; }
+        .key:active { background: #4CAF50 !important; } /* Visual feedback when held */
     </style>
 </head>
 <body>
 
+    <p>Click and hold a key to play sound</p>
     <div class="piano">
-        <div class="key black" onmousedown="playNote(466.16)" onmouseup="stopNote()" onmouseleave="stopNote()">A#</div>
-        <div class="key" onmousedown="playNote(261.63)" onmouseup="stopNote()" onmouseleave="stopNote()">C</div>
-        <div class="key black" onmousedown="playNote(277.18)" onmouseup="stopNote()" onmouseleave="stopNote()">C#</div>
+        <div class="key" onmousedown="startNote(261.63)" onmouseup="stopNote()" onmouseleave="stopNote()">C</div>
+        <div class="key black" onmousedown="startNote(277.18)" onmouseup="stopNote()" onmouseleave="stopNote()">C#</div>
+        <div class="key black" onmousedown="startNote(466.16)" onmouseup="stopNote()" onmouseleave="stopNote()">A#</div>
     </div>
 
     <script>
+        // Use a single AudioContext
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         let oscillator = null;
         let gainNode = null;
 
-        function playNote(frequency) {
-            // Create oscillator
+        function startNote(frequency) {
+            // Ensure context is active (browsers block auto-audio)
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            // Stop any existing note just in case
+            if (oscillator) stopNote();
+
             oscillator = audioCtx.createOscillator();
             gainNode = audioCtx.createGain();
 
-            oscillator.type = 'sine'; // Options: 'sine', 'square', 'sawtooth', 'triangle'
+            oscillator.type = 'triangle'; // Triangle is softer than Sine for long holds
             oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
             
-            // Connect and start
+            // Set volume to a steady 0.5 (50%) and keep it there
+            gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            
             oscillator.connect(gainNode);
             gainNode.connect(audioCtx.destination);
-            
-            // Smooth start to avoid clicking sounds
-            gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-            gainNode.gain.linearRampToValueAtTime(1, audioCtx.currentTime + 0.05);
             
             oscillator.start();
         }
 
         function stopNote() {
             if (oscillator) {
-                // Smooth fade out to avoid clicking
-                gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1);
-                oscillator.stop(audioCtx.currentTime + 0.1);
+                // Instantly set gain to 0 and stop
+                gainNode.gain.setValueAtTime(gainNode.gain.value, audioCtx.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.01);
+                oscillator.stop(audioCtx.currentTime + 0.01);
                 oscillator = null;
             }
         }
